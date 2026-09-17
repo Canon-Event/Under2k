@@ -1,69 +1,63 @@
 "use client";
 
-import { AlertCircle, IndianRupee, LockKeyhole } from "lucide-react";
-import { formatCurrency, parseRupeesToPaise, splitAmount } from "@/lib/payment";
+import { AlertCircle, ArrowRight, Check, ChevronDown, IndianRupee, LockKeyhole, Pencil, Plus, Store, Trash2 } from "lucide-react";
+import { formatCurrency, parseRupeesToPaise } from "@/lib/payment";
+import type { SplitMode } from "@/lib/types";
 
 type Props = {
-  name: string; upiId: string; amount: string; note: string; maxAmount: string; remember: boolean;
-  errors: Record<string, string>; busy?: boolean;
-  onChange: (field: string, value: string | boolean) => void;
-  onSubmit: () => void;
+  name: string; upiId: string; upiIds: string[]; amount: string; note: string; maxAmount: string; remember: boolean;
+  errors: Record<string, string>; savedProfile: boolean; editingMerchant: boolean;
+  splitMode: Exclude<SplitMode, "custom">; equalCount: string; parts: number[]; editingSplits: boolean; splitInputs: string[]; splitError?: string;
+  onChange: (field: string, value: string | boolean) => void; onEditMerchant: (editing: boolean) => void;
+  onUpiIdChange: (index: number, value: string) => void; onAddUpiId: () => void; onRemoveUpiId: (index: number) => void;
+  onSplitMode: (mode: Exclude<SplitMode, "custom">) => void; onEqualCount: (value: string) => void;
+  onEditSplits: () => void; onSplitInput: (index: number, value: string) => void; onResetSplits: () => void; onSubmit: () => void;
 };
 
 const quickAmounts = [500, 1000, 2000, 5000, 10000];
-const maxOptions = [500, 1000, 1500, 2000];
+const maxOptions = [500, 1000, 1500, 1999];
+const commonUpiHandles = ["@upi", "@okicici", "@oksbi", "@sbi", "@okaxis", "@okhdfcbank", "@ybl", "@ibl", "@paytm", "@axl"];
+const inputClass = "mt-2 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-[15px] outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-[#20242c] dark:focus:ring-brand-500/20";
 
 function FieldError({ message }: { message?: string }) {
   return message ? <p className="mt-1.5 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><AlertCircle size={13} />{message}</p> : null;
 }
 
-export default function MerchantForm({ name, upiId, amount, note, maxAmount, remember, errors, onChange, onSubmit }: Props) {
-  const paise = parseRupeesToPaise(amount);
-  const maxPaise = parseRupeesToPaise(maxAmount);
-  const preview = paise && maxPaise ? splitAmount(paise, maxPaise) : [];
-  const inputClass = "mt-2 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-[15px] outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-[#20242c] dark:focus:ring-brand-500/20";
+export default function MerchantForm(props: Props) {
+  const { name, upiId, upiIds, amount, note, maxAmount, remember, errors, savedProfile, editingMerchant, splitMode, equalCount, parts, editingSplits, splitInputs, splitError, onChange, onEditMerchant, onUpiIdChange, onAddUpiId, onRemoveUpiId, onSplitMode, onEqualCount, onEditSplits, onSplitInput, onResetSplits, onSubmit } = props;
+  const totalPaise = parseRupeesToPaise(amount);
+  const customTotal = editingSplits ? splitInputs.reduce((sum, value) => sum + (parseRupeesToPaise(value) ?? 0), 0) : parts.reduce((sum, value) => sum + value, 0);
+  const balanced = !!totalPaise && customTotal === totalPaise;
+  const applyUpiHandle = (index: number, handle: string) => {
+    if (!handle) return;
+    const current = upiIds[index] ?? "";
+    const localPart = current.includes("@") ? current.slice(0, current.indexOf("@")) : current;
+    onUpiIdChange(index, `${localPart}${handle}`);
+  };
 
-  return <section className="rounded-[14px] border border-slate-200/80 bg-white p-5 shadow-card dark:border-white/10 dark:bg-[#171a20] sm:p-6">
-    <div className="mb-5">
-      <p className="text-xs font-semibold uppercase tracking-[.14em] text-brand-600 dark:text-brand-100">Create a payment</p>
-      <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">Split a bill in seconds</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Enter the details your customer will see.</p>
-    </div>
-    <div className="space-y-4">
-      <label className="block text-sm font-medium">Merchant name
-        <input className={inputClass} value={name} onChange={(e) => onChange("name", e.target.value)} placeholder="Gupta Electronics" maxLength={80} />
-        <FieldError message={errors.name} />
+  return <section className="rounded-[14px] border border-slate-200/80 bg-white p-4 shadow-card dark:border-white/10 dark:bg-[#171a20] sm:p-6">
+    <div className="mb-5 flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-brand-600 dark:text-brand-100">New payment</p><h1 className="mt-1 text-xl font-bold tracking-tight">Enter the bill amount</h1></div><span className="rounded-lg bg-brand-50 p-2 text-brand-600 dark:bg-brand-500/10 dark:text-brand-100"><IndianRupee size={20} /></span></div>
+    <div className="space-y-5">
+      <label className="block text-sm font-semibold">Bill amount
+        <div className="relative mt-2"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-semibold text-slate-400">₹</span><input autoFocus className="w-full rounded-xl border-2 border-slate-200 bg-white py-4 pl-12 pr-4 text-3xl font-bold tracking-tight outline-none transition placeholder:text-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 dark:border-white/10 dark:bg-[#20242c] dark:focus:ring-brand-500/20" value={amount} onChange={(e) => onChange("amount", e.target.value)} placeholder="0" inputMode="decimal" aria-describedby={errors.amount ? "amount-error" : undefined} /></div>
+        <div id="amount-error"><FieldError message={errors.amount} /></div>
       </label>
-      <label className="block text-sm font-medium">UPI ID
-        <input className={inputClass} value={upiId} onChange={(e) => onChange("upiId", e.target.value)} placeholder="guptaelectronics@upi" inputMode="email" autoCapitalize="none" spellCheck={false} />
-        <FieldError message={errors.upiId} />
-      </label>
-      <label className="block text-sm font-medium">Bill amount
-        <div className="relative mt-2"><IndianRupee className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={19} /><input className={`${inputClass} mt-0 pl-10 text-xl font-semibold`} value={amount} onChange={(e) => onChange("amount", e.target.value)} placeholder="5,650" inputMode="decimal" /></div>
-        <FieldError message={errors.amount} />
-      </label>
-      <div className="flex flex-wrap gap-2" aria-label="Quick amounts">
-        {quickAmounts.map((value) => <button key={value} type="button" onClick={() => onChange("amount", String(value))} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand-500 hover:text-brand-600 dark:border-white/10 dark:text-slate-300">₹{value.toLocaleString("en-IN")}</button>)}
+      <div className="grid grid-cols-5 gap-1.5" aria-label="Quick amounts">{quickAmounts.map((value) => <button key={value} type="button" onClick={() => onChange("amount", String(value))} className="rounded-lg border border-slate-200 px-1 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-brand-500 hover:text-brand-600 dark:border-white/10 dark:text-slate-300 sm:text-xs">₹{value >= 1000 ? `${value / 1000}k` : value}</button>)}</div>
+
+      {savedProfile && !editingMerchant ? <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/5"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-white/10 dark:text-brand-100"><Store size={17} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="text-[11px] text-slate-500">Paying to</p></div><button type="button" onClick={() => onEditMerchant(true)} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-600 dark:text-brand-100"><Pencil size={13} />Edit</button></div>{upiIds.length > 1 ? <select value={upiId} onChange={(event) => onChange("upiId", event.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-brand-500 dark:border-white/10 dark:bg-[#20242c]">{upiIds.map((id, index) => <option key={`${id}-${index}`} value={id}>{id}</option>)}</select> : <p className="mt-2 truncate rounded-lg bg-white px-3 py-2 text-sm font-semibold dark:bg-[#20242c]">{upiId}</p>}</div> : <div className="space-y-3 rounded-xl border border-slate-200 p-3.5 dark:border-white/10"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Merchant details</p>{savedProfile && <button type="button" onClick={() => onEditMerchant(false)} className="text-xs font-semibold text-slate-500">Cancel</button>}</div><label className="block text-sm font-medium">Merchant name<input className={inputClass} value={name} onChange={(e) => onChange("name", e.target.value)} placeholder="Gupta Electronics" maxLength={80} /><FieldError message={errors.name} /></label><div><div className="flex items-center justify-between"><p className="text-sm font-medium">UPI IDs</p><button type="button" onClick={onAddUpiId} className="flex items-center gap-1 text-xs font-bold text-brand-600 dark:text-brand-100"><Plus size={13} />Add UPI ID</button></div><div className="mt-2 space-y-3">{upiIds.map((id, index) => <div key={index} className="flex items-start gap-2"><button type="button" onClick={() => onChange("upiId", id)} aria-label={`Use ${id || `UPI ID ${index + 1}`}`} className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${upiId === id && id ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 text-transparent dark:border-white/10"}`}><Check size={14} /></button><div className="min-w-0 flex-1"><input className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 dark:border-white/10 dark:bg-[#20242c]" value={id} onChange={(event) => onUpiIdChange(index, event.target.value)} placeholder={index === 0 ? "store@upi" : "another@bank"} inputMode="email" autoCapitalize="none" spellCheck={false} /><select defaultValue="" onChange={(event) => { applyUpiHandle(index, event.target.value); event.target.value = ""; }} aria-label={`Choose a common handle for UPI ID ${index + 1}`} className="mt-1.5 w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-white/5"><option value="">Add or replace with a common handle…</option>{commonUpiHandles.map((handle) => <option key={handle} value={handle}>{handle}</option>)}</select></div>{upiIds.length > 1 && <button type="button" onClick={() => onRemoveUpiId(index)} aria-label={`Remove UPI ID ${index + 1}`} className="mt-1 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"><Trash2 size={15} /></button>}</div>)}</div><FieldError message={errors.upiId} /><FieldError message={errors.upiIds} /><p className="mt-2 text-[11px] text-slate-500">Type the name, phone number or ID before choosing a handle. Custom handles are also supported.</p></div><label className="flex cursor-pointer items-center justify-between pt-1"><span><span className="block text-xs font-medium">Remember details</span><span className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500"><LockKeyhole size={11} />Only in this browser</span></span><input type="checkbox" checked={remember} onChange={(e) => onChange("remember", e.target.checked)} className="h-5 w-5 accent-brand-600" /></label></div>}
+
+      <div className="rounded-xl border border-slate-200 p-3.5 dark:border-white/10"><div className="flex items-center justify-between"><div><p className="text-sm font-bold">Live split</p><p className="mt-0.5 text-xs text-slate-500">Updates as you type</p></div>{parts.length > 0 && <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700 dark:bg-brand-500/10 dark:text-brand-100">{parts.length} payment{parts.length !== 1 && "s"}</span>}</div>
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 dark:bg-white/5"><button type="button" onClick={() => onSplitMode("maximum")} className={`rounded-md px-3 py-2 text-xs font-semibold ${splitMode === "maximum" ? "bg-white text-brand-700 shadow-sm dark:bg-white/10 dark:text-brand-100" : "text-slate-500"}`}>By maximum</button><button type="button" onClick={() => onSplitMode("equal")} className={`rounded-md px-3 py-2 text-xs font-semibold ${splitMode === "equal" ? "bg-white text-brand-700 shadow-sm dark:bg-white/10 dark:text-brand-100" : "text-slate-500"}`}>Equal split</button></div>
+        {splitMode === "maximum" ? <div className="mt-3"><label className="text-xs font-medium text-slate-500">Maximum per payment <span className="font-normal">(default ₹1,999)</span><div className="relative mt-1.5"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span><input className="w-full rounded-lg border border-slate-200 bg-transparent py-2 pl-8 pr-3 text-sm font-semibold outline-none focus:border-brand-500 dark:border-white/10" value={maxAmount} onChange={(e) => onChange("maxAmount", e.target.value)} inputMode="decimal" /></div></label><div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">{maxOptions.map((value) => <button type="button" key={value} onClick={() => onChange("maxAmount", String(value))} className={`shrink-0 rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${Number(maxAmount) === value ? "bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-100" : "bg-slate-100 text-slate-500 dark:bg-white/5"}`}>₹{value.toLocaleString("en-IN")}</button>)}</div><FieldError message={errors.maxAmount} /></div> : <div><label className="mt-3 flex items-center justify-between text-sm font-medium">Number of equal payments<input className="w-20 rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-center font-bold outline-none focus:border-brand-500 dark:border-white/10" value={equalCount} onChange={(e) => onEqualCount(e.target.value)} inputMode="numeric" /></label>{!parts.length && <FieldError message={splitError} />}</div>}
+
+        {parts.length > 0 && <div className="mt-4"><div className="flex items-center justify-between"><p className="text-xs font-medium text-slate-500">{formatCurrency(totalPaise ?? 0)} <ArrowRight size={12} className="mx-1 inline" /> split into</p>{editingSplits ? <button type="button" onClick={onResetSplits} className="text-xs font-semibold text-slate-500">Reset</button> : <button type="button" onClick={onEditSplits} className="flex items-center gap-1 text-xs font-bold text-brand-600 dark:text-brand-100"><Pencil size={12} />Edit amounts</button>}</div>
+          {editingSplits ? <div className="mt-2 space-y-2">{splitInputs.map((value, index) => <label key={index} className="flex items-center gap-2 text-xs text-slate-500"><span className="w-20">Payment {index + 1}</span><div className="relative flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2">₹</span><input value={value} onChange={(e) => onSplitInput(index, e.target.value)} inputMode="decimal" className="w-full rounded-lg border border-slate-200 bg-transparent py-2 pl-7 pr-3 font-semibold text-ink outline-none focus:border-brand-500 dark:border-white/10 dark:text-white" /></div></label>)}<div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${balanced ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"}`}><span>{balanced ? <><Check size={13} className="mr-1 inline" />Total matched</> : "Split total"}</span><strong>{formatCurrency(customTotal)} / {formatCurrency(totalPaise ?? 0)}</strong></div></div> : <div className="mt-2 flex flex-wrap items-center gap-1.5">{parts.slice(0, 8).map((part, index) => <span key={index} className="rounded-lg bg-slate-100 px-2.5 py-2 text-sm font-bold dark:bg-white/5">{formatCurrency(part)}</span>)}{parts.length > 8 && <span className="text-xs text-slate-500">+{parts.length - 8} more</span>}</div>}
+          <FieldError message={splitError} />
+        </div>}
       </div>
-      <label className="block text-sm font-medium">Optional note
-        <input className={inputClass} value={note} onChange={(e) => onChange("note", e.target.value)} placeholder="Invoice #1042" maxLength={80} />
-      </label>
-      <div>
-        <div className="flex items-end justify-between gap-3"><label className="block flex-1 text-sm font-medium">Maximum per payment
-          <div className="relative mt-2"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">₹</span><input className={`${inputClass} mt-0 pl-9`} value={maxAmount} onChange={(e) => onChange("maxAmount", e.target.value)} inputMode="decimal" /></div>
-        </label></div>
-        <div className="mt-2 flex flex-wrap gap-2">{maxOptions.map((value) => <button type="button" key={value} onClick={() => onChange("maxAmount", String(value))} className={`rounded-md px-2.5 py-1.5 text-xs font-semibold ${Number(maxAmount) === value ? "bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-100" : "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400"}`}>₹{value.toLocaleString("en-IN")}</button>)}</div>
-        <FieldError message={errors.maxAmount} />
-      </div>
-      {preview.length > 0 && <div className="rounded-xl border border-brand-100 bg-brand-50/70 p-4 dark:border-brand-500/20 dark:bg-brand-500/10">
-        <div className="flex items-center justify-between"><span className="text-sm text-slate-600 dark:text-slate-300">Smart split preview</span><strong className="text-sm">{preview.length} payment{preview.length !== 1 && "s"}</strong></div>
-        <div className="mt-3 flex flex-wrap gap-2">{preview.slice(0, 6).map((part, i) => <span key={i} className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold shadow-sm dark:bg-[#20242c]">{formatCurrency(part)}</span>)}{preview.length > 6 && <span className="px-2 py-1.5 text-xs text-slate-500">+{preview.length - 6} more</span>}</div>
-      </div>}
-      <label className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 p-3.5 dark:border-white/10">
-        <span><span className="block text-sm font-medium">Remember merchant details</span><span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500"><LockKeyhole size={12} />Saved only in this browser</span></span>
-        <input type="checkbox" checked={remember} onChange={(e) => onChange("remember", e.target.checked)} className="h-5 w-5 accent-brand-600" />
-      </label>
-      <button type="button" onClick={onSubmit} className="w-full rounded-xl bg-brand-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-[.99]">Generate payment split</button>
+
+      <details className="group rounded-xl border border-slate-200 dark:border-white/10"><summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-3 text-sm font-semibold">More details <ChevronDown size={16} className="transition group-open:rotate-180" /></summary><div className="border-t border-slate-100 p-3.5 dark:border-white/10"><label className="block text-sm font-medium">Payment note<input className={inputClass} value={note} onChange={(e) => onChange("note", e.target.value)} placeholder="Invoice #1042" maxLength={80} /></label></div></details>
+      <button type="button" onClick={onSubmit} disabled={!totalPaise} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-50">Start payment <ArrowRight size={17} /></button>
     </div>
   </section>;
 }

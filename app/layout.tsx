@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { getSiteUrl } from "@/lib/site";
+import PWARegister from "@/components/PWARegister";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -39,6 +40,7 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
   },
+  appleWebApp: { capable: true, title: "SplitUPI", statusBarStyle: "default" },
   manifest: "/manifest.webmanifest",
 };
 
@@ -64,5 +66,5 @@ const structuredData = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en-IN" suppressHydrationWarning><body className={inter.className}><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />{children}</body></html>;
+  return <html lang="en-IN" suppressHydrationWarning><body className={inter.className}><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} /><PWARegister />{children}</body></html>;
 }
