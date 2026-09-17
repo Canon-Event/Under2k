@@ -57,6 +57,8 @@ Push the project to a Git repository, import it in Vercel, and keep the detected
 npx vercel
 ```
 
+Vercel automatically supplies the production origin used by canonical and sitemap metadata. On another host, set `NEXT_PUBLIC_SITE_URL=https://your-domain.example`.
+
 ## Important limitations
 
 - Status is manually marked and is not bank confirmation.
