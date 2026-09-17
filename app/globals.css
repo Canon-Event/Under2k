@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #f7f8fa; color: #121417; -webkit-font-smoothing: antialiased; }
+.dark body { background: #0f1115; color: #f2f4f7; }
+button, input, select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+@media print {
+  body * { visibility: hidden !important; }
+  .print-slip, .print-slip * { visibility: visible !important; }
+  .print-slip { position: fixed !important; inset: 0 !important; width: 105mm !important; min-height: 148mm !important; margin: auto !important; padding: 12mm !important; background: white !important; color: black !important; }
+  .no-print { display: none !important; }
+}
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.animate-enter { animation: enter 200ms ease-out; }
